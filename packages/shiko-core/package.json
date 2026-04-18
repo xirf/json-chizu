@@ -1,0 +1,32 @@
+{
+  "name": "@shiko/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Framework-agnostic TypeScript core for Shiko graph/tree visualization.",
+  "packageManager": "bun@1.2.8",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "bunx tsup src/index.ts --dts --format esm,cjs --clean",
+    "dev": "bunx tsup src/index.ts --dts --format esm,cjs --watch",
+    "typecheck": "bunx tsc --noEmit",
+    "test": "bun test"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.2.4",
+    "typescript": "^5.6.3"
+  }
+}
