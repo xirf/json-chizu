@@ -1,0 +1,137 @@
+{
+  "fruits": [
+    {
+      "name": "Apple",
+      "color": "#FF0000",
+      "details": {
+        "type": "Pome",
+        "season": "Fall",
+        "cultivars": [
+          {
+            "variety": "Honeycrisp",
+            "flavor_profile": {
+              "sweetness": 8,
+              "acidity": 4,
+              "crunch_factor": 10
+            }
+          },
+          {
+            "variety": "Granny Smith",
+            "flavor_profile": {
+              "sweetness": 3,
+              "acidity": 9,
+              "crunch_factor": 8
+            }
+          }
+        ]
+      },
+      "nutrients": {
+        "calories": 52,
+        "macronutrients": {
+          "fiber": {
+            "value": "2.4g",
+            "daily_percentage": 9
+          },
+          "carbohydrates": {
+            "total": "14g",
+            "sugars": "10g"
+          }
+        },
+        "micronutrients": {
+          "vitaminC": "4.6mg",
+          "potassium": "107mg"
+        }
+      },
+      "supply_chain": {
+        "origin": {
+          "country": "USA",
+          "region": "Washington State"
+        },
+        "storage": {
+          "temperature_celsius": 1.5,
+          "controlled_atmosphere": true
+        }
+      }
+    },
+    {
+      "name": "Banana",
+      "color": "#FFFF00",
+      "details": {
+        "type": "Berry",
+        "season": "Year-round",
+        "cultivars": [
+          {
+            "variety": "Cavendish",
+            "flavor_profile": {
+              "sweetness": 7,
+              "acidity": 1,
+              "texture": "Creamy"
+            }
+          }
+        ]
+      },
+      "nutrients": {
+        "calories": 89,
+        "macronutrients": {
+          "fiber": {
+            "value": "2.6g",
+            "daily_percentage": 10
+          },
+          "potassium": {
+            "value": "358mg",
+            "daily_percentage": 15
+          }
+        }
+      },
+      "supply_chain": {
+        "origin": {
+          "country": "Ecuador",
+          "region": "Guayas"
+        },
+        "logistics": {
+          "shipping_method": "Refrigerated Container",
+          "ripening_center": "Local Hub"
+        }
+      }
+    },
+    {
+      "name": "Orange",
+      "color": "#FFA500",
+      "details": {
+        "type": "Citrus",
+        "season": "Winter",
+        "cultivars": [
+          {
+            "variety": "Navel",
+            "flavor_profile": {
+              "sweetness": 6,
+              "acidity": 5,
+              "seedless": true
+            }
+          }
+        ]
+      },
+      "nutrients": {
+        "calories": 47,
+        "macronutrients": {
+          "fiber": {
+            "value": "2.4g",
+            "daily_percentage": 9
+          }
+        },
+        "micronutrients": {
+          "vitaminC": {
+            "value": "53.2mg",
+            "daily_percentage": 88
+          }
+        }
+      },
+      "supply_chain": {
+        "origin": {
+          "country": "Spain",
+          "region": "Valencia"
+        }
+      }
+    }
+  ]
+}

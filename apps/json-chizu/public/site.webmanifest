@@ -1,0 +1,17 @@
+{
+  "name": "Shiko JSON-Chizu",
+  "short_name": "JSON-Chizu",
+  "description": "Worker-powered JSON graph explorer for large datasets.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1b2e",
+  "theme_color": "#101722",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

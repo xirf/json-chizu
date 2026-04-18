@@ -1,0 +1,214 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap");
+
+/* ─── Tokyo Night (default) ───────────────────────────────────── */
+:root,
+[data-theme="tokyo-night"] {
+  --bg-main:       #1a1b2e;
+  --bg-sidebar:    #1f2035;
+  --bg-canvas:     #1a1b2e;
+  --bg-toolbar:    #1f2035;
+  --bg-statusbar:  #16161e;
+  --bg-input:      rgba(0, 0, 0, 0.30);
+  --bg-btn:        rgba(255, 255, 255, 0.06);
+  --bg-btn-hover:  rgba(255, 255, 255, 0.10);
+  --bg-popover:    #1e2030;
+
+  --border-panel:  rgba(86, 95, 137, 0.28);
+  --border-strong: rgba(86, 95, 137, 0.45);
+  --border-input:  rgba(86, 95, 137, 0.38);
+  --border-btn:    rgba(86, 95, 137, 0.32);
+
+  --text-primary:  #c0caf5;
+  --text-soft:     #9aa5ce;
+  --text-muted:    #565f89;
+
+  --accent:        #7aa2f7;
+  --accent-hover:  #89b4fa;
+  --danger:        #f7768e;
+  --danger-light:  #ff9e9e;
+  --success:       #9ece6a;
+  --warning:       #e0af68;
+
+  --canvas-bg:     #1a1b2e;
+  --canvas-text:   #c0caf5;
+  --canvas-node-fill:   #1f2035;
+  --canvas-node-border: #3b4261;
+
+  --tok-key:     #e06c9a;
+  --tok-string:  #e8a854;
+  --tok-number:  #9ece6a;
+  --tok-boolean: #bb9af7;
+  --tok-null:    #f7768e;
+
+  --scrollbar-thumb: rgba(86, 95, 137, 0.30);
+  --scrollbar-hover: rgba(86, 95, 137, 0.50);
+
+  --selection-bg:  rgba(122, 162, 247, 0.25);
+
+  /* Status bar text — same as regular text on dark themes */
+  --statusbar-text:       var(--text-soft);
+  --statusbar-text-muted: var(--text-muted);
+  --statusbar-border:     var(--border-panel);
+}
+
+/* ─── Catppuccin Frappé ───────────────────────────────────────── */
+[data-theme="catppuccin-frappe"] {
+  --bg-main:       #303446;
+  --bg-sidebar:    #292c3c;
+  --bg-canvas:     #303446;
+  --bg-toolbar:    #292c3c;
+  --bg-statusbar:  #232634;
+  --bg-input:      rgba(0, 0, 0, 0.22);
+  --bg-btn:        rgba(255, 255, 255, 0.06);
+  --bg-btn-hover:  rgba(255, 255, 255, 0.10);
+  --bg-popover:    #292c3c;
+
+  --border-panel:  rgba(115, 121, 148, 0.28);
+  --border-strong: rgba(115, 121, 148, 0.45);
+  --border-input:  rgba(115, 121, 148, 0.38);
+  --border-btn:    rgba(115, 121, 148, 0.32);
+
+  --text-primary:  #c6d0f5;
+  --text-soft:     #b5bfe2;
+  --text-muted:    #737994;
+
+  --accent:        #8caaee;
+  --accent-hover:  #99b3f0;
+  --danger:        #e78284;
+  --danger-light:  #ea999c;
+  --success:       #a6d189;
+  --warning:       #e5c890;
+
+  --canvas-bg:     #303446;
+  --canvas-text:   #c6d0f5;
+  --canvas-node-fill:   #292c3c;
+  --canvas-node-border: #414559;
+
+  --tok-key:     #ea81bb;
+  --tok-string:  #e5c890;
+  --tok-number:  #a6d189;
+  --tok-boolean: #ca9ee6;
+  --tok-null:    #e78284;
+
+  --scrollbar-thumb: rgba(115, 121, 148, 0.30);
+  --scrollbar-hover: rgba(115, 121, 148, 0.50);
+
+  --selection-bg:  rgba(140, 170, 238, 0.25);
+
+  /* Status bar text */
+  --statusbar-text:       var(--text-soft);
+  --statusbar-text-muted: var(--text-muted);
+  --statusbar-border:     var(--border-panel);
+}
+
+/* ─── VSCode Light ────────────────────────────────────────────── */
+[data-theme="vscode-light"] {
+  --bg-main:       #ffffff;
+  --bg-sidebar:    #f5f5f5;
+  --bg-canvas:     #fafafa;
+  --bg-toolbar:    #f3f3f3;
+  --bg-statusbar:  #007acc;
+  --bg-input:      rgba(0, 0, 0, 0.04);
+  --bg-btn:        rgba(0, 0, 0, 0.04);
+  --bg-btn-hover:  rgba(0, 0, 0, 0.08);
+  --bg-popover:    #f5f5f5;
+
+  --border-panel:  rgba(0, 0, 0, 0.10);
+  --border-strong: rgba(0, 0, 0, 0.18);
+  --border-input:  rgba(0, 0, 0, 0.14);
+  --border-btn:    rgba(0, 0, 0, 0.12);
+
+  --text-primary:  #1e1e1e;
+  --text-soft:     #4e4e4e;
+  --text-muted:    #717171;
+
+  --accent:        #0066b8;
+  --accent-hover:  #0078d4;
+  --danger:        #cd3131;
+  --danger-light:  #d75f5f;
+  --success:       #389e0d;
+  --warning:       #bf8803;
+
+  --canvas-bg:     #fafafa;
+  --canvas-text:   #1e1e1e;
+  --canvas-node-fill:   #ffffff;
+  --canvas-node-border: #d4d4d4;
+
+  --tok-key:     #a626a4;
+  --tok-string:  #50a14f;
+  --tok-number:  #0184bc;
+  --tok-boolean: #994cc3;
+  --tok-null:    #e45649;
+
+  --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+  --scrollbar-hover: rgba(0, 0, 0, 0.28);
+
+  --selection-bg:  rgba(0, 102, 184, 0.15);
+
+  /* Status bar on VSCode Light is the blue #007acc bar → white text */
+  --statusbar-text:       rgba(255, 255, 255, 0.92);
+  --statusbar-text-muted: rgba(255, 255, 255, 0.65);
+  --statusbar-border:     rgba(255, 255, 255, 0.18);
+}
+
+/* ─── Reset & base ────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--bg-main);
+  overflow: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--text-primary);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+/* input type number disable spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
