@@ -1,0 +1,19 @@
+{
+  "name": "shiko-monorepo",
+  "private": true,
+  "packageManager": "bun@1.2.8",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:core": "cd packages/shiko-core && bun run build",
+    "typecheck:core": "cd packages/shiko-core && bun run typecheck",
+    "test:core": "cd packages/shiko-core && bun run test",
+    "build:vue": "cd packages/shiko-vue && bun run build",
+    "typecheck:vue": "cd packages/shiko-vue && bun run typecheck",
+    "dev:json": "cd apps/json-chizu && bun run dev",
+    "build:json": "bun run build:core && cd apps/json-chizu && bun run build",
+    "typecheck:json": "cd apps/json-chizu && bun run typecheck"
+  }
+}
