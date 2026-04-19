@@ -11,7 +11,7 @@ import {
   type ShikoTreeController,
   type LayoutProgressStage,
 } from "@shiko/core";
-import { estimateNodeSize } from "../utils/renderUtils";
+import { estimateNodeSize, extractFontFamily } from "../utils/renderUtils";
 
 export interface GraphLayoutOptions {
   tree: ShikoTreeController<unknown>;
@@ -49,6 +49,38 @@ export function useGraphLayout({
   const nodeMap = shallowRef<ReadonlyMap<string, ShikoNode<unknown>>>(new Map());
 
   let activeLayoutRunId = 0;
+
+  function createEdgeLabelMeasurer(fontTemplate: string): (label: string) => number {
+    const edgeFont = `500 11px ${extractFontFamily(fontTemplate)}`;
+
+    let context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
+    if (typeof OffscreenCanvas !== "undefined") {
+      context = new OffscreenCanvas(1, 1).getContext("2d");
+    } else if (typeof document !== "undefined") {
+      const canvas = document.createElement("canvas");
+      context = canvas.getContext("2d");
+    }
+
+    if (!context) {
+      // Conservative fallback close to 11px medium UI fonts.
+      const fallbackCharWidth = 7.2;
+      return (label: string): number => label.length * fallbackCharWidth;
+    }
+
+    context.font = edgeFont;
+    const cache = new Map<string, number>();
+
+    return (label: string): number => {
+      const cached = cache.get(label);
+      if (cached !== undefined) {
+        return cached;
+      }
+
+      const measured = context.measureText(label).width;
+      cache.set(label, measured);
+      return measured;
+    };
+  }
 
   function rebuildLayout(): void {
     const layoutRunId = ++activeLayoutRunId;
@@ -124,10 +156,10 @@ export function useGraphLayout({
       }
     }
 
-    // Compute per-depth minimum horizontal gap needed to fit edge labels.
-    // Each level gets its own gap width based on the longest edge label at that depth.
-    const edgeLabelFontSize = 11; // must match renderUtils edge label rendering
-    const edgeLabelCharWidth = edgeLabelFontSize * 0.6;
+    // Compute per-depth minimum horizontal gap needed to fit full edge labels.
+    // Each level gets its own gap width based on the widest label at that depth.
+    const measureEdgeLabelWidth = createEdgeLabelMeasurer(font);
+    const edgeLabelPadding = 20;
     const maxLabelWidthByDepth = new Map<number, number>();
 
     // Traverse the tree to map nodeId → depth
@@ -149,10 +181,14 @@ export function useGraphLayout({
 
     // Compute max edge label width at each depth
     for (const node of visibleNodes) {
+      if (!tree.expandedIds.has(node.id)) {
+        continue;
+      }
+
       const depth = nodeDepths.get(node.id) ?? 0;
       for (const child of node.children) {
         if (child.edgeLabel) {
-          const labelWidth = child.edgeLabel.length * edgeLabelCharWidth;
+          const labelWidth = measureEdgeLabelWidth(child.edgeLabel);
           const prev = maxLabelWidthByDepth.get(depth) ?? 0;
           maxLabelWidthByDepth.set(depth, Math.max(prev, labelWidth));
         }
@@ -175,16 +211,27 @@ export function useGraphLayout({
       layoutInput.config = layoutConfig;
     }
 
-    // Build per-depth horizontal gap overrides where edge labels need more space
-    if (maxLabelWidthByDepth.size > 0) {
+    // Build per-depth horizontal gap overrides where edge labels need more space.
+    // Merge with any existing depth-specific gap configuration.
+    const existingGapByDepth = layoutInput.config?.horizontalGapByDepth;
+    if (maxLabelWidthByDepth.size > 0 || existingGapByDepth) {
       const baseGap = layoutInput.config?.horizontalGap ?? 80;
       const gapByDepth = new Map<number, number>();
+
+      if (existingGapByDepth) {
+        for (const [depth, gap] of existingGapByDepth) {
+          gapByDepth.set(depth, gap);
+        }
+      }
+
       for (const [depth, labelWidth] of maxLabelWidthByDepth) {
-        const needed = Math.min(Math.ceil(labelWidth) + 20, 400);
-        if (needed > baseGap) {
+        const needed = Math.ceil(labelWidth + edgeLabelPadding);
+        const current = gapByDepth.get(depth) ?? baseGap;
+        if (needed > current) {
           gapByDepth.set(depth, needed);
         }
       }
+
       if (gapByDepth.size > 0) {
         layoutInput.config = {
           ...layoutInput.config,

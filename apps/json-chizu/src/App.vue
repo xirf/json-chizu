@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col w-full h-full overflow-hidden"
+    class="relative flex flex-col w-full h-full overflow-hidden"
     style="background: var(--bg-main)"
     @click="closeContextMenu"
     @contextmenu="closeContextMenu"
@@ -45,7 +45,7 @@
       >
         <!-- Unified Toolbar & Search -->
         <div
-          class="float-panel top-4 left-4 flex items-center h-8 px-1 z-10 shadow-xl bg-panel/95 backdrop-blur-md"
+          class="float-panel top-4 left-4 flex items-center h-8 px-1 z-10 shadow-xl bg-panel/95 backdrop-blur-md primary-toolbar-panel"
         >
           <!-- Canvas toolbar -->
           <CanvasToolbar
@@ -71,7 +71,7 @@
           />
         </div>
 
-        <div class="float-panel right-4 top-4 flex gap4">
+        <div class="float-panel right-4 top-4 flex gap-2 support-links-panel">
           <a
             href="https://github.com/shiko/json-chizu"
             target="_blank"
@@ -159,6 +159,43 @@
       :elapsedMs="elapsedMs"
       @expand-to-level="onExpandToLevel"
     />
+
+    <div
+      v-if="shouldBlockUnsupportedDevice"
+      class="unsupported-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-live="polite"
+    >
+      <div class="unsupported-card">
+        <div class="unsupported-kicker">Desktop-first app</div>
+        <h2 class="unsupported-title">Open JSON-Chizu on a larger screen</h2>
+        <p class="unsupported-description">
+          This interface is optimized for desktop mouse and trackpad workflows.
+          Compact or touch-first screens can cause overlapping controls.
+        </p>
+
+        <div class="unsupported-metrics">
+          <span>Current viewport: {{ viewportWidth }} x {{ viewportHeight }}</span>
+          <span>Recommended minimum: {{ MIN_SUPPORTED_WIDTH }} x {{ MIN_SUPPORTED_HEIGHT }}</span>
+        </div>
+
+        <ul class="unsupported-reasons">
+          <li v-if="hasCoarsePrimaryPointer">Touch-first devices are not supported yet.</li>
+          <li v-if="isViewportTooSmall">Some toolbars may overlap below the recommended minimum viewport.</li>
+        </ul>
+
+        <div class="unsupported-actions">
+          <button
+            type="button"
+            class="unsupported-btn unsupported-btn-primary"
+            @click.stop="onContinueAnyway"
+          >
+            Continue anyway
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -174,7 +211,7 @@ import {
   createNode,
 } from "@shiko/core";
 import { ShikoCanvas } from "@shiko/vue";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import EditorStatusBar from "./components/EditorStatusBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import JsonSyntaxEditor from "./components/JsonSyntaxEditor.vue";
@@ -216,6 +253,9 @@ const DEFAULT_MAX_NODES = 60000;
 const DEFAULT_MAX_DEPTH = 120;
 const DEFAULT_MAX_LABEL_LENGTH = 140;
 const DEFAULT_INITIAL_EXPAND_LEVEL = 10;
+const DEVICE_POLICY_BYPASS_KEY = "json-chizu.allow-unsupported-device";
+const MIN_SUPPORTED_WIDTH = 1200;
+const MIN_SUPPORTED_HEIGHT = 760;
 
 const emptyRoot = createNode({
   id: "root",
@@ -246,6 +286,24 @@ const { currentTheme } = useTheme();
 const layoutStage = ref<LayoutStage>("idle");
 const layoutProcessed = ref<number>(0);
 const layoutTotal = ref<number>(0);
+const viewportWidth = ref<number>(MIN_SUPPORTED_WIDTH);
+const viewportHeight = ref<number>(MIN_SUPPORTED_HEIGHT);
+const hasCoarsePrimaryPointer = ref<boolean>(false);
+const bypassUnsupportedScreenGate = ref<boolean>(false);
+
+const isViewportTooSmall = computed<boolean>(() => {
+  return (
+    viewportWidth.value < MIN_SUPPORTED_WIDTH ||
+    viewportHeight.value < MIN_SUPPORTED_HEIGHT
+  );
+});
+
+const shouldBlockUnsupportedDevice = computed<boolean>(() => {
+  return (
+    !bypassUnsupportedScreenGate.value &&
+    (hasCoarsePrimaryPointer.value || isViewportTooSmall.value)
+  );
+});
 
 // Resizable sidebar
 const {
@@ -492,9 +550,45 @@ function onExpandToLevel(): void {
   fitCanvas();
 }
 
+function syncViewportPolicyState(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  viewportWidth.value = window.innerWidth;
+  viewportHeight.value = window.innerHeight;
+  hasCoarsePrimaryPointer.value =
+    window.matchMedia("(pointer: coarse)").matches;
+}
+
+function onContinueAnyway(): void {
+  bypassUnsupportedScreenGate.value = true;
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(DEVICE_POLICY_BYPASS_KEY, "1");
+  }
+
+  fitCanvas();
+}
+
 onMounted(() => {
+  if (typeof window !== "undefined") {
+    bypassUnsupportedScreenGate.value =
+      window.localStorage.getItem(DEVICE_POLICY_BYPASS_KEY) === "1";
+    syncViewportPolicyState();
+    window.addEventListener("resize", syncViewportPolicyState, {
+      passive: true,
+    });
+  }
+
   buildSearchIndex(initialRoot);
   onParseClick();
+});
+
+onBeforeUnmount(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", syncViewportPolicyState);
+  }
 });
 </script>
 
@@ -510,6 +604,119 @@ onMounted(() => {
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-panel);
   flex-shrink: 0;
+}
+
+.primary-toolbar-panel {
+  max-width: calc(100% - 9.25rem);
+}
+
+.support-links-panel {
+  z-index: 12;
+}
+
+.unsupported-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg-main) 88%, #000000);
+  backdrop-filter: blur(6px);
+}
+
+.unsupported-card {
+  width: min(560px, 100%);
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--bg-sidebar) 88%, #000000);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.unsupported-kicker {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.unsupported-title {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.unsupported-description {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.unsupported-metrics {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: "IBM Plex Mono", "Cascadia Code", "Consolas", monospace;
+  font-size: 11px;
+  color: var(--text-soft);
+}
+
+.unsupported-reasons {
+  margin: 12px 0 0;
+  padding-left: 16px;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.unsupported-actions {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unsupported-btn {
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.unsupported-btn-primary {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.unsupported-btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+@media (max-width: 1360px), (max-height: 820px) {
+  .support-links-panel {
+    top: 3.35rem;
+  }
+}
+
+@media (max-width: 1200px) {
+  .primary-toolbar-panel {
+    max-width: calc(100% - 2rem);
+  }
+
+  .support-links-panel {
+    top: auto;
+    bottom: 2.9rem;
+  }
 }
 
 @media (max-width: 768px) {

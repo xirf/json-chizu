@@ -361,10 +361,17 @@ function pushArrayChildren(
   stack: WorkItem[],
   parentPath: string,
 ): void {
+  const parentKey = parent.edgeLabel;
+
   for (let i = value.length - 1; i >= 0; i -= 1) {
+    const indexToken = `[${i}]`;
+    const edgeLabel = parentKey
+      ? `${parentKey}${indexToken}`
+      : indexToken;
+
     stack.push({
-      key: `[${i}]`,
-      edgeLabel: String(i),
+      key: indexToken,
+      edgeLabel,
       value: value[i],
       parent,
       depth,
@@ -419,7 +426,7 @@ function formatLabel(key: string, value: unknown, maxLength: number): string {
   }
 
   if (typeof value === "string") {
-    return `${key}: ${truncate(value, maxLength)}`;
+    return `${key}: ${truncate(normalizeInlineString(value), maxLength)}`;
   }
 
   if (value === null) {
@@ -485,7 +492,7 @@ function formatInlineSummary(value: unknown, maxLength: number): string {
 
 function formatPrimitiveValue(value: unknown, maxLength: number): string {
   if (typeof value === "string") {
-    return truncate(value, maxLength);
+    return truncate(normalizeInlineString(value), maxLength);
   }
 
   if (Array.isArray(value)) {
@@ -512,6 +519,14 @@ function truncate(text: string, maxLength: number): string {
   }
 
   return `${text.slice(0, maxLength)}...`;
+}
+
+function normalizeInlineString(value: string): string {
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n/g, "\\n")
+    .replace(/\t/g, "\\t");
 }
 
 function isContainer(value: unknown): value is unknown[] | Record<string, unknown> {

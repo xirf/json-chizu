@@ -384,7 +384,13 @@ export function getTemplateFontSizePx(fontTemplate: string): number | null {
 export function estimateNodeSize(node: ShikoNode<unknown>, font: string, defaultNodeSize: Size): Size {
   const label = node.label ?? node.id;
   const lines = label.split("\n").filter((line) => line.trim().length > 0);
-  const visibleLineCount = Math.max(1, Math.min(10, lines.length));
+  const bodyLineCount = (() => {
+    if (lines.length > 1 && isArrayItemHeaderLine(lines[0]!)) {
+      return lines.length - 1;
+    }
+    return lines.length;
+  })();
+  const visibleLineCount = Math.max(1, Math.min(10, bodyLineCount));
   const longestLineLength = lines.reduce((maxLength, line) => {
     return Math.max(maxLength, line.length);
   }, 0);
@@ -397,7 +403,7 @@ export function estimateNodeSize(node: ShikoNode<unknown>, font: string, default
   const horizontalPadding = 14;
 
   const estimatedWidth = horizontalPadding * 2 + longestLineLength * avgCharWidth;
-  const estimatedHeight = visibleLineCount * rowHeight;
+  const estimatedHeight = NODE_HEADER_WORLD_HEIGHT + visibleLineCount * rowHeight;
 
   return {
     width: Math.max(defaultNodeSize.width, Math.min(360, Math.ceil(estimatedWidth))),
@@ -688,13 +694,8 @@ export function drawGraphCanvas(options: RenderCanvasOptions): void {
         context.textBaseline = "middle";
         context.fillStyle = colors.edgeLabel;
 
-        // Truncate label to fit within the gap between nodes
-        const gapWidth = Math.abs(toLeft.x - fromRight.x);
-        const maxLabelWidth = Math.max(10, gapWidth - 8);
-        const fittedLabel = truncateLabelToWidth(context, child.edgeLabel, maxLabelWidth);
-        if (fittedLabel) {
-          context.fillText(fittedLabel, labelX, labelY - edgeFontSize * 0.7);
-        }
+        // Render full edge labels without ellipsis truncation.
+        context.fillText(child.edgeLabel, labelX, labelY - edgeFontSize * 0.7);
       }
 
       context.globalAlpha = 1.0;
@@ -810,20 +811,14 @@ export function drawGraphCanvas(options: RenderCanvasOptions): void {
       const bodyStartY = screenPos.y + headerH;
       const bodyHeight = screenHeight - headerH;
 
+      // If the first line is an array-item header ("Item N"), it's already shown
+      // in the node header bar — remove it before clipping body rows.
+      const firstLineIsItemHeader = lines.length > 1 && isArrayItemHeaderLine(lines[0]!);
+      const bodyLines = firstLineIsItemHeader ? lines.slice(1) : lines;
       const maxVisibleLines = Math.max(1, Math.floor(Math.max(1, bodyHeight) / rowHeight + 0.05));
-      let visibleLines = lines.slice(0, maxVisibleLines);
+      const visibleLines = bodyLines.slice(0, maxVisibleLines);
       if (visibleLines.length === 0) {
         continue;
-      }
-
-      // If the first line is an array-item header ("Item N"), it's already shown
-      // in the node header bar — skip it in the body to avoid duplication.
-      const firstLineIsItemHeader = visibleLines.length > 1 && isArrayItemHeaderLine(visibleLines[0]!);
-      if (firstLineIsItemHeader) {
-        visibleLines = visibleLines.slice(1);
-        if (visibleLines.length === 0) {
-          continue;
-        }
       }
 
       const totalRowsHeight = visibleLines.length * rowHeight;
@@ -884,7 +879,7 @@ export function centerEllipsis(text: string, maxChars: number): string {
 
 /**
  * Draws the compact header bar at the top of each node.
- * Header contains: key label (center-ellipsis, max 10 chars), eye icon, ⓘ icon, +/- indicator.
+ * Header contains: key label (center-ellipsis, max 30 chars), eye icon, ⓘ icon, +/- indicator.
  */
 function drawNodeHeader(
   context: CanvasRenderingContext2D,
@@ -945,7 +940,7 @@ function drawNodeHeader(
   // Focus / eye icon
   drawCanvasIcon(context, "focus", eyeCx, iconCenterY, iconSize, iconColor);
 
-  // Key label — left side, truncated with center ellipsis to 10 chars
+  // Key label — left side, truncated with center ellipsis to 30 chars
   const leftPad = 8 * scale;
   const rightBoundary = eyeCx - iconSize / 2 - pad;
   const maxLabelWidth = rightBoundary - screenPos.x - leftPad;
@@ -954,7 +949,7 @@ function drawNodeHeader(
     const rawKey = isBroken
       ? "BROKEN"
       : (node.edgeLabel ?? node.label?.split("\n")[0] ?? node.id);
-    const truncKey = centerEllipsis(rawKey, 10);
+    const truncKey = centerEllipsis(rawKey, 30);
     const fontSize = 10 * scale;
     context.font = `500 ${fontSize}px ${extractFontFamily("Inter, sans-serif")}`;
     context.textAlign = "left";
