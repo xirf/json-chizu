@@ -1,6 +1,7 @@
 {
   "name": "shiko-monorepo",
   "private": true,
+  "license": "GPL-3.0-only",
   "packageManager": "bun@1.2.8",
   "workspaces": [
     "packages/*",

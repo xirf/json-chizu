@@ -2,12 +2,14 @@
   "name": "@shiko/json-chizu",
   "version": "0.1.0",
   "private": true,
+  "license": "GPL-3.0-only",
   "description": "Vue JSON-Chizu app powered by @shiko/core and @shiko/vue.",
   "packageManager": "bun@1.2.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:json": "cd ../../packages/shiko-core && bun run build && cd ../../apps/json-chizu && bun run build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit"
   },
