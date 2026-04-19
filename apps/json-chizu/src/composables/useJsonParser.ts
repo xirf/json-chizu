@@ -8,8 +8,8 @@ export interface ParseLimits {
   maxLabelLength: number;
 }
 
-export type SourceFormat = "auto" | "json" | "yaml";
-export type ResolvedSourceFormat = "json" | "yaml";
+export type SourceFormat = "auto" | "json" | "yaml" | "jsonl";
+export type ResolvedSourceFormat = "json" | "yaml" | "jsonl";
 
 export type ParseErrorStage = "parse" | "transform";
 

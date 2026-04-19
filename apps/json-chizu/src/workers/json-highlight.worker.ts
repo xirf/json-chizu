@@ -12,7 +12,7 @@ interface HighlightedMessage {
   liteMode: boolean;
 }
 
-type HighlightMode = "auto" | "json" | "yaml";
+type HighlightMode = "auto" | "json" | "yaml" | "jsonl";
 
 const COLORIZE_LIMIT = 1_000_000;
 
@@ -68,6 +68,10 @@ function resolveHighlightMode(
 ): Exclude<HighlightMode, "auto"> {
   if (sourceFormatHint === "json" || sourceFormatHint === "yaml") {
     return sourceFormatHint;
+  }
+
+  if (sourceFormatHint === "jsonl") {
+    return "json";
   }
 
   return detectHighlightMode(text);

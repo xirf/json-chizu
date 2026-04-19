@@ -44,7 +44,7 @@ interface HighlightResponseMessage {
   liteMode: boolean;
 }
 
-type SourceFormatHint = "auto" | "json" | "yaml";
+type SourceFormatHint = "auto" | "json" | "yaml" | "jsonl";
 
 const props = withDefaults(
   defineProps<{
@@ -56,7 +56,7 @@ const props = withDefaults(
   }>(),
   {
     disabled: false,
-    placeholder: "Paste large JSON or YAML here...",
+    placeholder: "Paste large JSON, YAML, or JSONL here...",
     errorLine: null,
     errorLines: () => [],
     sourceFormatHint: "auto",

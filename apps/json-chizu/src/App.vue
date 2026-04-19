@@ -236,6 +236,10 @@ import {
   type LayoutMode,
 } from "./lib/layout-mode";
 import jsonSample from "./samples/sample.json";
+import sampleYamlText from "./samples/sample.yaml?raw";
+import sampleJsonlText from "./samples/sample.jsonl?raw";
+
+type SampleFormat = "json" | "yaml" | "jsonl";
 
 interface ShikoCanvasExpose {
   focusNode: (nodeId: string, targetScale?: number) => boolean;
@@ -267,7 +271,7 @@ const emptyRoot = createNode({
   label: "$",
   children: [
     createLeafNode("hint", {
-      label: "Paste JSON or YAML and click Render",
+      label: "Paste JSON, YAML, or JSONL and click Render",
     }),
   ],
 });
@@ -450,35 +454,20 @@ function onParseClick(): void {
   );
 }
 
-function onLoadSample(): void {
-  const sample = {
-    metadata: {
-      createdAt: new Date().toISOString(),
-      source: "sample",
-    },
-    users: Array.from({ length: 50 }, (_, userIndex) => ({
-      id: userIndex + 1,
-      profile: {
-        name: `User ${userIndex + 1}`,
-        flags: {
-          active: userIndex % 2 === 0,
-          premium: userIndex % 3 === 0,
-        },
-      },
-      sessions: Array.from({ length: 15 }, (_, sessionIndex) => ({
-        id: `${userIndex + 1}-${sessionIndex + 1}`,
-        actions: Array.from({ length: 20 }, (_, actionIndex) => ({
-          type: "click",
-          payload: {
-            target: `button-${actionIndex}`,
-            timestamp: Date.now() + actionIndex,
-          },
-        })),
-      })),
-    })),
-  };
+function onLoadSample(format: SampleFormat): void {
+  if (format === "yaml") {
+    jsonText.value = sampleYamlText;
+    preferredSourceFormat.value = "yaml";
+    return;
+  }
 
-  jsonText.value = JSON.stringify(sample, null, 2);
+  if (format === "jsonl") {
+    jsonText.value = sampleJsonlText;
+    preferredSourceFormat.value = "jsonl";
+    return;
+  }
+
+  jsonText.value = JSON.stringify(jsonSample, null, 2);
   preferredSourceFormat.value = "json";
 }
 
@@ -498,6 +487,10 @@ function onClear(): void {
 
 function inferSourceFormatFromFileName(fileName: string): SourceFormat {
   const normalized = fileName.trim().toLowerCase();
+  if (normalized.endsWith(".jsonl") || normalized.endsWith(".ndjson")) {
+    return "jsonl";
+  }
+
   if (normalized.endsWith(".yaml") || normalized.endsWith(".yml")) {
     return "yaml";
   }
@@ -513,6 +506,10 @@ function resolveDownloadFormat(
   preferredFormat: SourceFormat,
   parsedFormat: ResolvedSourceFormat,
 ): ResolvedSourceFormat {
+  if (preferredFormat === "jsonl") {
+    return "jsonl";
+  }
+
   if (preferredFormat === "yaml") {
     return "yaml";
   }
@@ -548,7 +545,9 @@ function onDownloadJson(): void {
   );
   const mimeType = format === "yaml"
     ? "text/yaml;charset=utf-8"
-    : "application/json;charset=utf-8";
+    : format === "jsonl"
+      ? "application/x-ndjson;charset=utf-8"
+      : "application/json;charset=utf-8";
 
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);

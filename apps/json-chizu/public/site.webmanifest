@@ -1,11 +1,12 @@
 {
   "name": "Shiko JSON-Chizu",
   "short_name": "JSON-Chizu",
-  "description": "Worker-powered JSON graph explorer for large datasets.",
+  "description": "Worker-powered JSON, YAML, and JSONL graph explorer for large structured datasets.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1b2e",
   "theme_color": "#101722",
+  "categories": ["developer", "productivity", "utilities"],
   "icons": [
     {
       "src": "/favicon.svg",

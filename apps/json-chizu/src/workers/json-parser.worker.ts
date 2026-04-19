@@ -15,8 +15,8 @@ import {
 } from "../lib/json-to-shiko";
 import { LineCounter, parseDocument } from "yaml";
 
-type SourceFormat = "auto" | "json" | "yaml";
-type ResolvedSourceFormat = "json" | "yaml";
+type SourceFormat = "auto" | "json" | "yaml" | "jsonl";
+type ResolvedSourceFormat = "json" | "yaml" | "jsonl";
 
 interface ParseRequestMessage {
   type: "parse";
@@ -75,6 +75,13 @@ interface YamlParseResult {
   parsedValue: unknown;
   issues: ParseIssue[];
   fatalIssue: ParseIssue | null;
+}
+
+interface JsonlParseResult {
+  sourceFormat: "jsonl";
+  parsedValue: unknown[];
+  issues: ParseIssue[];
+  parsedLineCount: number;
 }
 
 interface YamlLinePosition {
@@ -411,6 +418,119 @@ function parseAsYaml(source: string): YamlParseResult {
   }
 }
 
+function parseAsJsonl(source: string): JsonlParseResult {
+  const lines = source.split("\n");
+  const parsedLines: unknown[] = [];
+  const issues: ParseIssue[] = [];
+  let lineStartIndex = 0;
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const rawLine = lines[lineIndex] ?? "";
+    const normalizedLine = rawLine.endsWith("\r")
+      ? rawLine.slice(0, -1)
+      : rawLine;
+    const trimmedLine = normalizedLine.trim();
+
+    const lineBreakSize = lineIndex < lines.length - 1 ? 1 : 0;
+
+    if (trimmedLine.length === 0) {
+      lineStartIndex += rawLine.length + lineBreakSize;
+      continue;
+    }
+
+    const parseErrors: ParseError[] = [];
+    const parsed = parseJsonc(
+      normalizedLine,
+      parseErrors,
+      JSON_PARSE_OPTIONS,
+    ) as unknown;
+
+    if (parseErrors.length === 0) {
+      parsedLines.push(parsed === undefined ? null : parsed);
+      lineStartIndex += rawLine.length + lineBreakSize;
+      continue;
+    }
+
+    for (const parseError of parseErrors) {
+      const index = lineStartIndex + parseError.offset;
+      issues.push({
+        message: toFriendlyParseMessage(parseError.error),
+        line: lineIndex + 1,
+        column: parseError.offset + 1,
+        index,
+        code: printParseErrorCode(parseError.error),
+        source: getSourceLineAtIndex(source, index),
+      });
+    }
+
+    lineStartIndex += rawLine.length + lineBreakSize;
+  }
+
+  return {
+    sourceFormat: "jsonl",
+    parsedValue: parsedLines,
+    issues: dedupeIssues(issues),
+    parsedLineCount: parsedLines.length,
+  };
+}
+
+function isLikelyJsonValueLine(text: string): boolean {
+  const trimmed = text.trimStart();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  const first = trimmed[0]!;
+  if (
+    first === "{" ||
+    first === "[" ||
+    first === '"' ||
+    first === "-" ||
+    (first >= "0" && first <= "9")
+  ) {
+    return true;
+  }
+
+  return (
+    trimmed.startsWith("true") ||
+    trimmed.startsWith("false") ||
+    trimmed.startsWith("null")
+  );
+}
+
+function shouldAttemptJsonlAutoFallback(source: string, jsonIssues: ParseIssue[]): boolean {
+  if (jsonIssues.length === 0 || !source.includes("\n")) {
+    return false;
+  }
+
+  const nonEmptyLines = source
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (nonEmptyLines.length < 2) {
+    return false;
+  }
+
+  const candidateCount = nonEmptyLines.filter((line) => isLikelyJsonValueLine(line)).length;
+  return candidateCount >= 2;
+}
+
+function shouldPreferJsonlAutoResult(
+  jsonResult: JsonParseResult,
+  jsonlResult: JsonlParseResult,
+): boolean {
+  if (jsonlResult.parsedLineCount < 2) {
+    return false;
+  }
+
+  if (jsonlResult.issues.length === 0) {
+    return true;
+  }
+
+  return jsonlResult.issues.length < jsonResult.issues.length;
+}
+
 function shouldAttemptYamlAutoFallback(source: string, jsonIssues: ParseIssue[]): boolean {
   if (jsonIssues.length === 0) {
     return false;
@@ -708,6 +828,12 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
       parsedValue = yamlResult.parsedValue;
       issues = yamlResult.issues;
       syntaxTree = undefined;
+    } else if (requestedFormat === "jsonl") {
+      const jsonlResult = parseAsJsonl(message.jsonText);
+      sourceFormat = "jsonl";
+      parsedValue = jsonlResult.parsedValue;
+      issues = jsonlResult.issues;
+      syntaxTree = undefined;
     } else {
       const jsonResult = parseAsJson(message.jsonText);
       sourceFormat = "json";
@@ -717,6 +843,20 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
 
       if (
         requestedFormat === "auto" &&
+        shouldAttemptJsonlAutoFallback(message.jsonText, jsonResult.issues)
+      ) {
+        const jsonlResult = parseAsJsonl(message.jsonText);
+        if (shouldPreferJsonlAutoResult(jsonResult, jsonlResult)) {
+          sourceFormat = "jsonl";
+          parsedValue = jsonlResult.parsedValue;
+          issues = jsonlResult.issues;
+          syntaxTree = undefined;
+        }
+      }
+
+      if (
+        requestedFormat === "auto" &&
+        sourceFormat === "json" &&
         shouldAttemptYamlAutoFallback(message.jsonText, jsonResult.issues)
       ) {
         const yamlResult = parseAsYaml(message.jsonText);
