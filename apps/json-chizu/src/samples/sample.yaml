@@ -1,0 +1,176 @@
+fruits:
+  - entity_id: "urn:epc:id:sgtin:0614141.107346.2019"
+    taxonomic_data:
+      kingdom: Plantae
+      clades:
+        - Tracheophytes
+        - Angiosperms
+        - Eudicots
+        - Rosids
+      order: Rosales
+      family: Rosaceae
+      genus: Malus
+      species: M. domestica
+      genomic_profile:
+        assembly_version: GDDH13_v1.1
+        chromosomes:
+          - id: chr1
+            length_bp: 30424571
+            alleles:
+              Md-ACS1:
+                type: ethylene_biosynthesis
+                expression_level: heterozygous
+    provenance_ledger:
+      - transaction_id: "0x8fB2...3a9C"
+        timestamp: "2026-04-18T09:32:01Z"
+        actor:
+          role: Orchard
+          gln: "0614141000005"
+        telemetry:
+          soil_conditions:
+            ph_level: 6.2
+            moisture_index:
+              depth_10cm: 0.24
+              depth_50cm: 0.31
+    editorial_content:
+      metadata:
+        locale: en-US
+        version_control:
+          revision: 4
+          last_modified_by: editor_772
+      tiptap_document:
+        type: doc
+        content:
+          - type: heading
+            attrs:
+              level: 1
+            content:
+              - type: text
+                text: "Comprehensive Analysis: "
+              - type: text
+                marks:
+                  - type: italic
+                text: Malus domestica
+          - type: paragraph
+            content:
+              - type: text
+                text: "The cultivation of apples involves complex "
+              - type: text
+                marks:
+                  - type: bold
+                  - type: italic
+                  - type: link
+                    attrs:
+                      href: "https://example-agri-science.org/ethylene"
+                      target: _blank
+                text: ethylene-regulated pathways
+              - type: text
+                text: " that dictate ripening and storage longevity."
+          - type: blockquote
+            content:
+              - type: paragraph
+                content:
+                  - type: text
+                    text: '"An apple a day keeps the supply chain analysts awake at night due to stringent cold-chain requirements."'
+          - type: heading
+            attrs:
+              level: 2
+            content:
+              - type: text
+                text: Phytochemical Breakdown
+          - type: table
+            content:
+              - type: tableRow
+                content:
+                  - type: tableHeader
+                    attrs:
+                      colspan: 1
+                      rowspan: 1
+                    content:
+                      - type: paragraph
+                        content:
+                          - type: text
+                            marks:
+                              - type: bold
+                            text: Compound
+                  - type: tableHeader
+                    attrs:
+                      colspan: 1
+                      rowspan: 1
+                    content:
+                      - type: paragraph
+                        content:
+                          - type: text
+                            marks:
+                              - type: bold
+                            text: Concentration (mg/100g)
+              - type: tableRow
+                content:
+                  - type: tableCell
+                    attrs:
+                      colspan: 1
+                      rowspan: 1
+                    content:
+                      - type: paragraph
+                        content:
+                          - type: text
+                            text: Chlorogenic Acid
+                  - type: tableCell
+                    attrs:
+                      colspan: 1
+                      rowspan: 1
+                    content:
+                      - type: paragraph
+                        content:
+                          - type: text
+                            text: "12.5"
+          - type: heading
+            attrs:
+              level: 2
+            content:
+              - type: text
+                text: Storage Protocols
+          - type: orderedList
+            attrs:
+              start: 1
+            content:
+              - type: listItem
+                content:
+                  - type: paragraph
+                    content:
+                      - type: text
+                        text: Pre-cooling phase
+              - type: listItem
+                content:
+                  - type: paragraph
+                    content:
+                      - type: text
+                        text: "Controlled Atmosphere (CA) initialization:"
+                  - type: bulletList
+                    content:
+                      - type: listItem
+                        content:
+                          - type: paragraph
+                            content:
+                              - type: text
+                                text: Reduce O2 to 1.2%
+                      - type: listItem
+                        content:
+                          - type: paragraph
+                            content:
+                              - type: text
+                                text: Maintain CO2 at 2.0%
+          - type: image
+            attrs:
+              src: "https://example.com/apple-diagram.png"
+              alt: "Cross-section of Malus domestica"
+              title: Apple Anatomy
+          - type: codeBlock
+            attrs:
+              language: javascript
+            content:
+              - type: text
+                text: |-
+                  function calculateRipeningIndex(ethylene_ppm) {
+                    return ethylene_ppm * 1.45;
+                  }

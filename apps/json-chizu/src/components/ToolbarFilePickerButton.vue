@@ -31,9 +31,9 @@ const props = withDefaults(defineProps<{
   accept?: string;
 }>(), {
   disabled: false,
-  title: "Open JSON file",
-  ariaLabel: "Open JSON file",
-  accept: "application/json,.json,.txt",
+  title: "Open JSON or YAML file",
+  ariaLabel: "Open JSON or YAML file",
+  accept: "application/json,application/yaml,text/yaml,.json,.yaml,.yml,.txt",
 });
 
 const emit = defineEmits<{

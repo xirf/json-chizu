@@ -28,6 +28,7 @@
           v-model="jsonText"
           :disabled="isParsing"
           :error-lines="parseErrorLines"
+          :source-format-hint="preferredSourceFormat"
         />
       </aside>
 
@@ -218,7 +219,11 @@ import JsonSyntaxEditor from "./components/JsonSyntaxEditor.vue";
 import CanvasToolbar from "./components/CanvasToolbar.vue";
 import CanvasSearchBar from "./components/CanvasSearchBar.vue";
 import NodeContextMenu from "./components/NodeContextMenu.vue";
-import { useJsonParser } from "./composables/useJsonParser";
+import {
+  useJsonParser,
+  type SourceFormat,
+  type ResolvedSourceFormat,
+} from "./composables/useJsonParser";
 import { useTreeSearch } from "./composables/useTreeSearch";
 import { useTheme } from "./composables/useTheme";
 import { useSidebar } from "./composables/useSidebar";
@@ -230,7 +235,7 @@ import {
   getLayoutModeLabel,
   type LayoutMode,
 } from "./lib/layout-mode";
-import jsonSample from "./sample.json";
+import jsonSample from "./samples/sample.json";
 
 interface ShikoCanvasExpose {
   focusNode: (nodeId: string, targetScale?: number) => boolean;
@@ -262,7 +267,7 @@ const emptyRoot = createNode({
   label: "$",
   children: [
     createLeafNode("hint", {
-      label: "Paste JSON and click Render",
+      label: "Paste JSON or YAML and click Render",
     }),
   ],
 });
@@ -280,6 +285,7 @@ const maxDepth = ref<number>(DEFAULT_MAX_DEPTH);
 const maxLabelLength = ref<number>(DEFAULT_MAX_LABEL_LENGTH);
 const layoutMode = ref<LayoutMode>(getInitialLayoutMode());
 const expandLevel = ref<number>(DEFAULT_INITIAL_EXPAND_LEVEL);
+const preferredSourceFormat = ref<SourceFormat>("auto");
 
 const { currentTheme } = useTheme();
 
@@ -370,6 +376,7 @@ const {
   parsedNodeCount,
   truncated,
   elapsedMs,
+  parsedSourceFormat,
   parseJson,
   resetState,
   setParseError,
@@ -432,11 +439,15 @@ function resetLayoutProgress(): void {
 
 function onParseClick(): void {
   resetLayoutProgress();
-  parseJson(jsonText.value, {
-    maxNodes: maxNodes.value,
-    maxDepth: maxDepth.value,
-    maxLabelLength: maxLabelLength.value,
-  });
+  parseJson(
+    jsonText.value,
+    {
+      maxNodes: maxNodes.value,
+      maxDepth: maxDepth.value,
+      maxLabelLength: maxLabelLength.value,
+    },
+    preferredSourceFormat.value,
+  );
 }
 
 function onLoadSample(): void {
@@ -468,10 +479,12 @@ function onLoadSample(): void {
   };
 
   jsonText.value = JSON.stringify(sample, null, 2);
+  preferredSourceFormat.value = "json";
 }
 
 function onClear(): void {
   jsonText.value = "";
+  preferredSourceFormat.value = "auto";
   resetLayoutProgress();
   resetState(emptyRoot);
   clearSearch();
@@ -483,9 +496,38 @@ function onClear(): void {
   fitCanvas();
 }
 
+function inferSourceFormatFromFileName(fileName: string): SourceFormat {
+  const normalized = fileName.trim().toLowerCase();
+  if (normalized.endsWith(".yaml") || normalized.endsWith(".yml")) {
+    return "yaml";
+  }
+
+  if (normalized.endsWith(".json")) {
+    return "json";
+  }
+
+  return "auto";
+}
+
+function resolveDownloadFormat(
+  preferredFormat: SourceFormat,
+  parsedFormat: ResolvedSourceFormat,
+): ResolvedSourceFormat {
+  if (preferredFormat === "yaml") {
+    return "yaml";
+  }
+
+  if (preferredFormat === "json") {
+    return "json";
+  }
+
+  return parsedFormat;
+}
+
 async function onFileSelected(file: File): Promise<void> {
   try {
     jsonText.value = await file.text();
+    preferredSourceFormat.value = inferSourceFormatFromFileName(file.name);
   } catch (error) {
     setParseError(
       error instanceof Error ? error.message : "Failed to read file",
@@ -500,12 +542,20 @@ function onDownloadJson(): void {
     return;
   }
 
-  const blob = new Blob([content], { type: "application/json;charset=utf-8" });
+  const format = resolveDownloadFormat(
+    preferredSourceFormat.value,
+    parsedSourceFormat.value,
+  );
+  const mimeType = format === "yaml"
+    ? "text/yaml;charset=utf-8"
+    : "application/json;charset=utf-8";
+
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = "json-chizu-export.json";
+  link.download = `json-chizu-export.${format}`;
   link.click();
 
   URL.revokeObjectURL(url);

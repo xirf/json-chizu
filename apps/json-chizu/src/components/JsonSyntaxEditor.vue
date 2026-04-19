@@ -44,18 +44,22 @@ interface HighlightResponseMessage {
   liteMode: boolean;
 }
 
+type SourceFormatHint = "auto" | "json" | "yaml";
+
 const props = withDefaults(
   defineProps<{
     disabled?: boolean;
     placeholder?: string;
     errorLine?: number | null;
     errorLines?: number[];
+    sourceFormatHint?: SourceFormatHint;
   }>(),
   {
     disabled: false,
-    placeholder: "Paste large JSON here...",
+    placeholder: "Paste large JSON or YAML here...",
     errorLine: null,
     errorLines: () => [],
+    sourceFormatHint: "auto",
   },
 );
 
@@ -101,8 +105,8 @@ worker.onmessage = (event: MessageEvent<HighlightResponseMessage>) => {
 };
 
 watch(
-  jsonText,
-  (value) => {
+  [jsonText, () => props.sourceFormatHint],
+  ([value, sourceFormatHint]) => {
     if (debounceHandle) {
       clearTimeout(debounceHandle);
     }
@@ -115,6 +119,7 @@ watch(
         type: "highlight",
         requestId,
         text: value,
+        sourceFormatHint,
       });
     }, 85);
   },
@@ -272,5 +277,6 @@ function scrollToLine(line: number): void {
 .json-highlight :deep(.tok-brace) { color: #89ddff; }
 .json-highlight :deep(.tok-colon),
 .json-highlight :deep(.tok-comma) { color: #637777; }
+.json-highlight :deep(.tok-comment) { color: #6b7280; }
 .json-highlight :deep(.tok-plain) { color: #d4d4d8; }
 </style>

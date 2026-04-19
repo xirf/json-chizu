@@ -4,7 +4,7 @@
     <div class="flex items-center h-full">
       <span class="flex items-center gap-1.5 h-full px-3 text-text-primary text-xs font-600 tracking-tight border-r border-border-panel select-none">
         <div class="i-lucide-code-xml size-4 text-accent" />
-        JSON
+        JSON/YAML
       </span>
     </div>
 
@@ -13,16 +13,16 @@
       <!-- Open file -->
       <ToolbarFilePickerButton
         :disabled="props.isParsing"
-        title="Open JSON file"
-        :ariaLabel="'Open JSON file'"
+        title="Open JSON or YAML file"
+        :ariaLabel="'Open JSON or YAML file'"
         @file-selected="onFileSelected"
       />
 
       <!-- Download JSON -->
       <ToolbarIconButton
         :disabled="props.isParsing || !props.canDownload"
-        title="Download current JSON"
-        :ariaLabel="'Download current JSON'"
+        title="Download current JSON/YAML"
+        :ariaLabel="'Download current JSON or YAML text'"
         @click="emit('download')"
       >
         <div class="i-lucide-download size-4" />
@@ -50,8 +50,8 @@
       <button
         class="flex items-center gap-1.5 px-2.5 h-7 border-none rounded-[5px] bg-accent text-white text-[11px] font-600 cursor-pointer whitespace-nowrap transition-colors duration-120 hover:bg-accent-hover disabled:op-45 disabled:cursor-not-allowed"
         :disabled="props.isParsing"
-        title="Parse JSON and render graph"
-        aria-label="Parse JSON and render graph"
+        title="Parse JSON or YAML and render graph"
+        aria-label="Parse JSON or YAML and render graph"
         @click="emit('parse')"
       >
         <div class="i-lucide-sun size-4" />

@@ -8,6 +8,9 @@ export interface ParseLimits {
   maxLabelLength: number;
 }
 
+export type SourceFormat = "auto" | "json" | "yaml";
+export type ResolvedSourceFormat = "json" | "yaml";
+
 export type ParseErrorStage = "parse" | "transform";
 
 export interface ParseIssue {
@@ -28,6 +31,7 @@ interface ParseProgressMessage {
 interface ParseResultMessage {
   type: "result";
   requestId: number;
+  sourceFormat: ResolvedSourceFormat;
   nodeCount: number;
   truncated: boolean;
   elapsedMs: number;
@@ -94,6 +98,7 @@ export function useJsonParser(options: UseJsonParserOptions) {
   const progressNodeCount = ref<number>(0);
   const truncated = ref<boolean>(false);
   const elapsedMs = ref<number>(0);
+  const parsedSourceFormat = ref<ResolvedSourceFormat>("json");
 
   let activeRequestId = 0;
 
@@ -160,6 +165,7 @@ export function useJsonParser(options: UseJsonParserOptions) {
     parsedNodeCount.value = message.nodeCount;
     progressNodeCount.value = message.nodeCount;
     truncated.value = message.truncated;
+    parsedSourceFormat.value = message.sourceFormat;
     rootNode.value = message.root;
     options.onParsedRoot?.(message.root);
   };
@@ -199,7 +205,11 @@ export function useJsonParser(options: UseJsonParserOptions) {
     isParsing.value = false;
   }
 
-  function parseJson(jsonText: string, limits: ParseLimits): void {
+  function parseJson(
+    jsonText: string,
+    limits: ParseLimits,
+    sourceFormat: SourceFormat = "auto",
+  ): void {
     resetMetrics();
     isParsing.value = true;
 
@@ -208,6 +218,7 @@ export function useJsonParser(options: UseJsonParserOptions) {
       type: "parse",
       requestId: activeRequestId,
       jsonText,
+      sourceFormat,
       options: {
         maxNodes: limits.maxNodes,
         maxDepth: limits.maxDepth,
@@ -244,6 +255,7 @@ export function useJsonParser(options: UseJsonParserOptions) {
     progressNodeCount,
     truncated,
     elapsedMs,
+    parsedSourceFormat,
     parseJson,
     resetState,
     setRoot,

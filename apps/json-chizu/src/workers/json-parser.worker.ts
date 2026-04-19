@@ -13,11 +13,16 @@ import {
   convertJsonToShikoChunked,
   type JsonToShikoOptions,
 } from "../lib/json-to-shiko";
+import { LineCounter, parseDocument } from "yaml";
+
+type SourceFormat = "auto" | "json" | "yaml";
+type ResolvedSourceFormat = "json" | "yaml";
 
 interface ParseRequestMessage {
   type: "parse";
   requestId: number;
   jsonText: string;
+  sourceFormat?: SourceFormat;
   options?: Partial<JsonToShikoOptions>;
 }
 
@@ -30,6 +35,7 @@ interface ProgressMessage {
 interface ResultMessage {
   type: "result";
   requestId: number;
+  sourceFormat: ResolvedSourceFormat;
   nodeCount: number;
   truncated: boolean;
   elapsedMs: number;
@@ -57,6 +63,32 @@ interface ParseIssue {
   source: string | null;
 }
 
+interface JsonParseResult {
+  sourceFormat: "json";
+  parsedValue: unknown;
+  issues: ParseIssue[];
+  syntaxTree: JsonAstNode | undefined;
+}
+
+interface YamlParseResult {
+  sourceFormat: "yaml";
+  parsedValue: unknown;
+  issues: ParseIssue[];
+  fatalIssue: ParseIssue | null;
+}
+
+interface YamlLinePosition {
+  line: number;
+  col: number;
+}
+
+interface YamlIssueLike {
+  message?: unknown;
+  code?: unknown;
+  pos?: unknown;
+  linePos?: unknown;
+}
+
 interface JsonGraphNodeData {
   path: string;
   value: unknown;
@@ -80,6 +112,26 @@ type WorkerResponse = ProgressMessage | ResultMessage | ErrorMessage;
 
 let latestRequestId = 0;
 const MAX_ISSUE_NODES = 40;
+
+const JSON_PARSE_OPTIONS = {
+  allowTrailingComma: false,
+  disallowComments: true,
+  allowEmptyContent: false,
+} as const;
+
+class SourceParseError extends Error {
+  readonly line: number | null;
+  readonly column: number | null;
+  readonly index: number | null;
+
+  constructor(issue: ParseIssue) {
+    super(issue.message);
+    this.name = "SourceParseError";
+    this.line = issue.line;
+    this.column = issue.column;
+    this.index = issue.index;
+  }
+}
 
 function getLineColumnFromIndex(
   text: string,
@@ -163,6 +215,218 @@ function collectParseIssues(source: string, errors: ParseError[]): ParseIssue[] 
   }
 
   return issues;
+}
+
+function isYamlLinePosition(value: unknown): value is YamlLinePosition {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as { line?: unknown; col?: unknown };
+  return typeof candidate.line === "number" && typeof candidate.col === "number";
+}
+
+function getYamlIssueIndex(issue: YamlIssueLike): number | null {
+  if (!Array.isArray(issue.pos)) {
+    return null;
+  }
+
+  const [start] = issue.pos;
+  if (typeof start !== "number") {
+    return null;
+  }
+
+  return start;
+}
+
+function getYamlIssueMessage(issue: YamlIssueLike): string {
+  if (typeof issue.message === "string" && issue.message.length > 0) {
+    const [firstLine] = issue.message.split("\n");
+    return firstLine?.trim() || issue.message;
+  }
+
+  return "YAML parse issue";
+}
+
+function getYamlIssueCode(issue: YamlIssueLike, fallbackCode: string): string {
+  if (typeof issue.code === "string" && issue.code.length > 0) {
+    return issue.code;
+  }
+
+  return fallbackCode;
+}
+
+function resolveYamlIssueLocation(
+  source: string,
+  issue: YamlIssueLike,
+  lineCounter: LineCounter,
+): { line: number | null; column: number | null; index: number | null } {
+  const index = getYamlIssueIndex(issue);
+
+  if (Array.isArray(issue.linePos) && issue.linePos.length > 0) {
+    const [first] = issue.linePos;
+    if (isYamlLinePosition(first)) {
+      return {
+        line: first.line,
+        column: first.col,
+        index,
+      };
+    }
+  }
+
+  if (index !== null) {
+    const counted = lineCounter.linePos(index);
+    if (counted) {
+      return {
+        line: counted.line,
+        column: counted.col,
+        index,
+      };
+    }
+
+    const fallback = getLineColumnFromIndex(source, index);
+    return {
+      line: fallback.line,
+      column: fallback.column,
+      index,
+    };
+  }
+
+  return {
+    line: null,
+    column: null,
+    index: null,
+  };
+}
+
+function dedupeIssues(issues: ParseIssue[]): ParseIssue[] {
+  const seen = new Set<string>();
+  const deduped: ParseIssue[] = [];
+
+  for (const issue of issues) {
+    const key = `${issue.code}:${issue.index ?? "nil"}:${issue.message}`;
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    deduped.push(issue);
+  }
+
+  return deduped;
+}
+
+function collectYamlIssues(
+  source: string,
+  issues: readonly YamlIssueLike[],
+  lineCounter: LineCounter,
+  fallbackCode: string,
+): ParseIssue[] {
+  const collected: ParseIssue[] = [];
+
+  for (const issue of issues) {
+    const location = resolveYamlIssueLocation(source, issue, lineCounter);
+    collected.push({
+      message: getYamlIssueMessage(issue),
+      line: location.line,
+      column: location.column,
+      index: location.index,
+      code: getYamlIssueCode(issue, fallbackCode),
+      source: location.index !== null ? getSourceLineAtIndex(source, location.index) : null,
+    });
+  }
+
+  return dedupeIssues(collected);
+}
+
+function parseAsJson(source: string): JsonParseResult {
+  const parseErrors: ParseError[] = [];
+  const parsed = parseJsonc(
+    source,
+    parseErrors,
+    JSON_PARSE_OPTIONS,
+  ) as unknown;
+
+  return {
+    sourceFormat: "json",
+    parsedValue: parsed === undefined ? {} : parsed,
+    issues: collectParseIssues(source, parseErrors),
+    syntaxTree: parseTree(source, [], JSON_PARSE_OPTIONS),
+  };
+}
+
+function parseAsYaml(source: string): YamlParseResult {
+  const lineCounter = new LineCounter();
+  const document = parseDocument(source, { lineCounter });
+
+  const errorIssues = collectYamlIssues(
+    source,
+    document.errors as unknown as YamlIssueLike[],
+    lineCounter,
+    "YAML_PARSE_ERROR",
+  );
+  const warningIssues = collectYamlIssues(
+    source,
+    document.warnings as unknown as YamlIssueLike[],
+    lineCounter,
+    "YAML_WARNING",
+  );
+
+  if (errorIssues.length > 0) {
+    return {
+      sourceFormat: "yaml",
+      parsedValue: {},
+      issues: [...errorIssues, ...warningIssues],
+      fatalIssue: errorIssues[0] ?? null,
+    };
+  }
+
+  try {
+    const parsedValue = document.toJS();
+    return {
+      sourceFormat: "yaml",
+      parsedValue: parsedValue === undefined ? {} : parsedValue,
+      issues: warningIssues,
+      fatalIssue: null,
+    };
+  } catch (error) {
+    const fallbackIssue: ParseIssue = {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to convert YAML document to JavaScript value",
+      line: null,
+      column: null,
+      index: null,
+      code: "YAML_TO_JS_ERROR",
+      source: null,
+    };
+
+    return {
+      sourceFormat: "yaml",
+      parsedValue: {},
+      issues: [...warningIssues, fallbackIssue],
+      fatalIssue: fallbackIssue,
+    };
+  }
+}
+
+function shouldAttemptYamlAutoFallback(source: string, jsonIssues: ParseIssue[]): boolean {
+  if (jsonIssues.length === 0) {
+    return false;
+  }
+
+  const trimmed = source.trimStart();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  // Preserve the existing JSON-recovery behavior for JSON-looking payloads.
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    return false;
+  }
+
+  return true;
 }
 
 function isIdentifier(key: string): boolean {
@@ -428,32 +692,48 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
   const startedAt = performance.now();
 
   try {
-    const parseOptions = {
-      allowTrailingComma: false,
-      disallowComments: true,
-      allowEmptyContent: false,
-    } as const;
+    const requestedFormat = message.sourceFormat ?? "auto";
+    let sourceFormat: ResolvedSourceFormat = "json";
+    let parsedValue: unknown;
+    let issues: ParseIssue[];
+    let syntaxTree: JsonAstNode | undefined;
 
-    const parseErrors: ParseError[] = [];
-    const parsed = parseJsonc(
-      message.jsonText,
-      parseErrors,
-      parseOptions,
-    ) as unknown;
+    if (requestedFormat === "yaml") {
+      const yamlResult = parseAsYaml(message.jsonText);
+      if (yamlResult.fatalIssue) {
+        throw new SourceParseError(yamlResult.fatalIssue);
+      }
 
-    const syntaxTree = parseTree(
-      message.jsonText,
-      [],
-      parseOptions,
-    );
+      sourceFormat = "yaml";
+      parsedValue = yamlResult.parsedValue;
+      issues = yamlResult.issues;
+      syntaxTree = undefined;
+    } else {
+      const jsonResult = parseAsJson(message.jsonText);
+      sourceFormat = "json";
+      parsedValue = jsonResult.parsedValue;
+      issues = jsonResult.issues;
+      syntaxTree = jsonResult.syntaxTree;
 
-    const issues = collectParseIssues(message.jsonText, parseErrors);
-    const parsedValue = parsed === undefined ? {} : parsed;
+      if (
+        requestedFormat === "auto" &&
+        shouldAttemptYamlAutoFallback(message.jsonText, jsonResult.issues)
+      ) {
+        const yamlResult = parseAsYaml(message.jsonText);
+        if (!yamlResult.fatalIssue) {
+          sourceFormat = "yaml";
+          parsedValue = yamlResult.parsedValue;
+          issues = yamlResult.issues;
+          syntaxTree = undefined;
+        }
+      }
+    }
 
     if (issues.length > 0) {
       // Keep detailed diagnostics visible for debugging while still rendering partial graph.
       console.warn("[json-parser.worker] Recovered parse issues", {
         requestId,
+        sourceFormat,
         issueCount: issues.length,
         issues,
       });
@@ -488,6 +768,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
     const payload: ResultMessage = {
       type: "result",
       requestId,
+      sourceFormat,
       nodeCount: result.nodeCount + withIssues.addedNodeCount,
       truncated: result.truncated,
       elapsedMs: performance.now() - startedAt,
@@ -498,6 +779,22 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
     self.postMessage(payload satisfies WorkerResponse);
   } catch (error) {
     if (error instanceof JsonToShikoAbortedError) {
+      return;
+    }
+
+    if (error instanceof SourceParseError) {
+      const payload: ErrorMessage = {
+        type: "error",
+        requestId,
+        elapsedMs: performance.now() - startedAt,
+        message: error.message,
+        line: error.line,
+        column: error.column,
+        index: error.index,
+        stage: "parse",
+      };
+
+      self.postMessage(payload satisfies WorkerResponse);
       return;
     }
 

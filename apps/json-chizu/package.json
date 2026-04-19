@@ -18,7 +18,8 @@
     "@shiko/vue": "workspace:*",
     "jsonc-parser": "^3.3.1",
     "shiki": "^4.0.2",
-    "vue": "^3.5.18"
+    "vue": "^3.5.18",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.102",
