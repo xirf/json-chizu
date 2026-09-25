@@ -652,9 +652,17 @@ function getLocalPoint(event: PointerEvent | WheelEvent | MouseEvent): Point {
 }
 
 function onWheel(event: WheelEvent): void {
+  // Browsers report trackpad pinches as ctrl+wheel. Pixel deltas
+  // without ctrl represent two-finger scrolling on the canvas.
+  if (!event.ctrlKey && event.deltaMode === WheelEvent.DOM_DELTA_PIXEL) {
+    viewport.panBy(-event.deltaX, -event.deltaY);
+    return;
+  }
+
+  // Mouse wheel zoom and trackpad pinch zoom stay anchored at the pointer.
+  const deltaY = event.deltaY * (event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? 800 : 1);
   const focal = getLocalPoint(event);
-  const scaleDelta = Math.exp(-event.deltaY * 0.0015);
-  viewport.zoomTo(viewport.scale * scaleDelta, focal);
+  viewport.zoomTo(viewport.scale * Math.exp(-deltaY * 0.0015), focal);
 }
 
 function onPointerDown(event: PointerEvent): void {
