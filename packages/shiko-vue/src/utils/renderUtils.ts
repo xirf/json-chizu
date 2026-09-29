@@ -488,8 +488,9 @@ export function getWrappedLinesForValue(
   valueWidth: number,
   fontSize: number,
   avgCharWidth: number,
+  continuationWidth = valueWidth,
 ): string[] {
-  const wrapped = wrapTextHelper(ctx, value, valueWidth, valueWidth, fontSize, avgCharWidth);
+  const wrapped = wrapTextHelper(ctx, value, valueWidth, continuationWidth, fontSize, avgCharWidth);
   if (wrapped.length > 4) {
     const lastLine = wrapped[wrapped.length - 1] || "";
     const suffix = " (show less)";
@@ -502,7 +503,7 @@ export function getWrappedLinesForValue(
       lastLineWidth = lastLine.length * avgCharWidth;
       suffixWidth = suffix.length * avgCharWidth;
     }
-    if (lastLineWidth + suffixWidth > valueWidth) {
+    if (lastLineWidth + suffixWidth > continuationWidth) {
       return [...wrapped, ""];
     }
   }
@@ -646,7 +647,7 @@ export function getWrappedLinesCount(
   }
 
   const valueWidth = Math.max(1, maxTextWidth - keyWidth);
-  const wrapped = getWrappedLinesForValue(ctx, untruncatedVal, valueWidth, fontSize, avgCharWidth);
+  const wrapped = getWrappedLinesForValue(ctx, untruncatedVal, valueWidth, fontSize, avgCharWidth, maxTextWidth);
   return Math.max(1, wrapped.length);
 }
 
@@ -1037,7 +1038,7 @@ export function computeNodeRowExpandZones(
         keyWidth = 0;
       } else {
         valueWidth = Math.max(1, maxTextWidth - keyWidth);
-        wrapped = getWrappedLinesForValue(ctx, untruncatedVal, valueWidth, worldFontSize * scale, Math.max(6.2, worldFontSize * 0.54) * scale);
+        wrapped = getWrappedLinesForValue(ctx, untruncatedVal, valueWidth, worldFontSize * scale, Math.max(6.2, worldFontSize * 0.54) * scale, maxTextWidth);
       }
     }
 
@@ -1674,7 +1675,7 @@ export function drawGraphCanvas(options: RenderCanvasOptions): void {
             wrapped = getWrappedLinesForValue(context, untruncatedVal, maxTextWidth, fontSize, Math.max(6.2, worldFontSize * 0.54) * viewport.scale);
           } else {
             const valueWidth = Math.max(1, maxTextWidth - keyWidth);
-            wrapped = getWrappedLinesForValue(context, untruncatedVal, valueWidth, fontSize, Math.max(6.2, worldFontSize * 0.54) * viewport.scale);
+            wrapped = getWrappedLinesForValue(context, untruncatedVal, valueWidth, fontSize, Math.max(6.2, worldFontSize * 0.54) * viewport.scale, maxTextWidth);
           }
         }
 
@@ -1754,6 +1755,8 @@ export function drawGraphCanvas(options: RenderCanvasOptions): void {
 
         for (let k = 0; k < finalRowLines; k++) {
           const lineCenterY = currentRowTop + k * rowHeight + rowHeight / 2;
+          const lineStartX = k === 0 ? startX : screenPos.x + horizontalPadding;
+          const lineWidth = k === 0 ? valueWidth : maxTextWidth;
           const textLine = wrappedLines[k] ?? "";
           const isTextToggle = wrappedLinesCount > 4;
           const isLastLine = k === finalRowLines - 1;
@@ -1764,27 +1767,27 @@ export function drawGraphCanvas(options: RenderCanvasOptions): void {
               context,
               textLine,
               " ... read more",
-              valueWidth,
+              lineWidth,
               Math.max(6.2, worldFontSize * 0.54) * viewport.scale
             );
             context.fillStyle = valColor;
-            context.fillText(truncatedText, startX, lineCenterY);
+            context.fillText(truncatedText, lineStartX, lineCenterY);
             context.fillStyle = colors.textSummary;
-            context.fillText(" ... read more", startX + suffixXOffset, lineCenterY);
+            context.fillText(" ... read more", lineStartX + suffixXOffset, lineCenterY);
           } else if (isRowExpanded && isTextToggle && isLastLine) {
             const { text: truncatedText, suffixXOffset } = truncateLineWithSuffix(
               context,
               textLine,
               " (show less)",
-              valueWidth,
+              lineWidth,
               Math.max(6.2, worldFontSize * 0.54) * viewport.scale
             );
             context.fillStyle = valColor;
-            context.fillText(truncatedText, startX, lineCenterY);
+            context.fillText(truncatedText, lineStartX, lineCenterY);
             context.fillStyle = colors.textSummary;
-            context.fillText(" (show less)", startX + suffixXOffset, lineCenterY);
+            context.fillText(" (show less)", lineStartX + suffixXOffset, lineCenterY);
           } else {
-            let valX = startX;
+            let valX = lineStartX;
             if (k === 0 && hasKey && keyWidth > 0) {
               const hexColorMatch = valuePart.match(/^#([0-9A-Fa-f]{3,8})$/);
               if (hexColorMatch && fontSize) {
