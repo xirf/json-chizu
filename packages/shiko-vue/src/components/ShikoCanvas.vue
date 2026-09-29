@@ -191,6 +191,7 @@ onBeforeUnmount(() => {
   unsubscribeSelection();
   unsubscribeViewport();
   resizeObserver?.disconnect();
+  document.fonts?.removeEventListener("loadingdone", rebuildLayout);
 });
 
 /**
@@ -292,6 +293,12 @@ onMounted(() => {
 
   syncCanvasSize();
   rebuildLayout();
+  // Canvas text metrics change when a web font replaces its fallback. The
+  // measured node sizes and edge anchors must be rebuilt at the same time.
+  document.fonts?.addEventListener("loadingdone", rebuildLayout);
+  void document.fonts?.ready.then(() => {
+    if (containerRef.value) rebuildLayout();
+  });
 });
 
 function syncCanvasSize(): void {
